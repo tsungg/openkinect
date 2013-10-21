@@ -32,7 +32,6 @@ import org.openkinect.freenect.DepthHandler;
 import org.openkinect.freenect.Device;
 import org.openkinect.freenect.FrameMode;
 import org.openkinect.freenect.Freenect;
-import org.openkinect.freenect.VideoFormat;
 import org.openkinect.freenect.VideoHandler;
 
 import processing.core.PApplet;
@@ -43,97 +42,109 @@ import processing.core.PImage;
  * 
  */
 public class Kinect {
-  public final static String VERSION = "##library.prettyVersion##";
+    public final static String VERSION = "##library.prettyVersion##";
 
-  private PApplet parent;
-  private Method kinectEventMethod;
-  private Context context;
-  private Device device;
+    private PApplet parent;
+    private Method kinectEventMethod;
+    private Context context;
+    private Device device;
+    private DepthFrame depthFrame;
+    private RGBFrame rgbFrame;
 
-  /**
-   * Constructor, sets the PApplet we are running inside as the parent.
-   * 
-   * @param parent
-   */
-  public Kinect(PApplet parent) {
-    this.parent = parent;
     /**
-     * try { this.kinectEventMethod = this.parent.getClass().getMethod(
-     * "kinectEvent", new Class[] { Kinect.class }); } catch
-     * (NoSuchMethodException e) { throw new RuntimeException(
-     * "You appear to be missing the kinectEvent() method.", e); } catch
-     * (SecurityException e) { throw new RuntimeException(
-     * "Security exception when trying to load the kinectEvent() method.", e); }
-     **/
-  }
+     * Constructor, sets the PApplet we are running inside as the parent.
+     * 
+     * @param parent
+     */
+    public Kinect(PApplet parent) {
+        this.parent = parent;
+        this.depthFrame = new DepthFrame(parent);
 
-  /**
-   * Start the kinect.
-   */
-  public void start() {
-    this.start(0);
-  }
-
-  /**
-   * Start the kinect setting some num parameter.
-   * 
-   * TODO: figure out what num does in this context.
-   * 
-   * @param num
-   */
-  public void start(int num) {
-    this.context = Freenect.createContext();
-    if (this.context.numDevices() < 1) {
-      System.out.println("No Kinect devices found.");
+        /**
+         * try { this.kinectEventMethod = this.parent.getClass().getMethod(
+         * "kinectEvent", new Class[] { Kinect.class }); } catch
+         * (NoSuchMethodException e) { throw new RuntimeException(
+         * "You appear to be missing the kinectEvent() method.", e); } catch
+         * (SecurityException e) { throw new RuntimeException(
+         * "Security exception when trying to load the kinectEvent() method.",
+         * e); }
+         **/
     }
-    this.device = this.context.openDevice(num);
 
-    this.device.startVideo(new VideoHandler() {
-      @Override
-      public void onFrameReceived(FrameMode mode, ByteBuffer frame,
-          int timestamp) {
-        // System.out.println("received video frame: " + timestamp);
-        System.out.println("Frame mode: " + mode.format);
-      }
-    });
-
-    this.device.startDepth(new DepthHandler() {
-
-      @Override
-      public void onFrameReceived(FrameMode mode, ByteBuffer frame,
-          int timestamp) {
-        // System.out.println("Received depth frame: " + timestamp);
-      }
-    });
-  }
-
-  /**
-   * Stop the Kinect.
-   */
-  public void stop() {
-    if (this.context != null) {
-      this.context.shutdown();
+    /**
+     * Start the kinect.
+     */
+    public void start() {
+        this.start(0);
     }
-  }
 
-  public void enableRGB(boolean b) {
-    this.device.setVideoFormat(VideoFormat.RGB);
-  }
+    /**
+     * Start the kinect setting some num parameter.
+     * 
+     * TODO: figure out what num does in this context.
+     * 
+     * @param num
+     */
+    public void start(int num) {
+        this.context = Freenect.createContext();
+        if (this.context.numDevices() < 1) {
+            System.out.println("No Kinect devices found.");
+        }
+        this.device = this.context.openDevice(num);
 
-  public PImage getVideoImage() {
-    return null;
-  }
+        this.device.startVideo(new VideoHandler() {
+            @Override
+            public void onFrameReceived(FrameMode mode, ByteBuffer frame,
+                    int timestamp) {
+                rgbFrame.setData(frame);
+            }
+        });
 
-  public PImage getDepthImage() {
-    return null;
-  }
+        this.device.startDepth(new DepthHandler() {
+            @Override
+            public void onFrameReceived(FrameMode mode, ByteBuffer frame,
+                    int timestamp) {
+                depthFrame.setData(frame);
+            }
+        });
+    }
 
-  /**
-   * return the version of the library.
-   * 
-   * @return String
-   */
-  public static String version() {
-    return VERSION;
-  }
+    /**
+     * Stop the Kinect.
+     */
+    public void stop() {
+        if (this.context != null) {
+            this.context.shutdown();
+        }
+    }
+
+    public void enableRGB(boolean b) {
+        this.rgbFrame.setProcessImage(b);
+    }
+
+    public void enableDepth(boolean b) {
+        this.depthFrame.setProcessImage(b);
+    }
+
+    public PImage getVideoImage() {
+        return this.rgbFrame.getImage();
+    }
+
+    /**
+     * Get the depth image.
+     * 
+     * @return
+     */
+    public PImage getDepthImage() {
+        return this.depthFrame.getImage();
+    }
+
+    /**
+     * return the version of the library.
+     * 
+     * @return String
+     */
+    public static String version() {
+        return VERSION;
+    }
 }
