@@ -1,3 +1,5 @@
+Experimental Processing library, attempting to get the Kinect running with the latest Libfreenect code on Linux.
+
 The following describes how to set up a Processing library project in Eclipse and build it successfully, and to make your library ready for distribution.
 
 ## Import to Eclipse
