@@ -19,10 +19,16 @@ public abstract class AbstractFrame implements Frame {
     protected PApplet parent;
     protected ShortBuffer sdata;
     protected PImage image;
+    protected float fps;
+    protected long currentTime;
+    protected Kinect kinect;
 
-    public AbstractFrame(PApplet parent) {
+    public AbstractFrame(PApplet parent, Kinect kinect) {
+        System.out.println("Created AbstractFrame");
         this.parent = parent;
-        image = parent.createImage(640, 480, PConstants.RGB);
+        this.kinect = kinect;
+        this.image = parent.createImage(640, 480, PConstants.RGB);
+        this.currentTime = System.currentTimeMillis();
     }
 
     /**
@@ -40,6 +46,19 @@ public abstract class AbstractFrame implements Frame {
      */
     public void setProcessImage(boolean processImage) {
         this.processImage = processImage;
+    }
+
+    public ShortBuffer getRawData() {
+        return this.sdata;
+    }
+
+    protected void calculateFps() {
+        long now = System.currentTimeMillis();
+        long elapsedTime = now - this.currentTime;
+        float currentFps = 1000.0f / elapsedTime;
+        this.fps = PApplet.lerp(this.fps, currentFps, 0.1f);
+        kinect.debug(this.getClass().getSimpleName() + " FPS: " + this.fps);
+        this.currentTime = now;
     }
 
 }

@@ -2,7 +2,7 @@
 <classpath>
 	<classpathentry kind="src" output="bin" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/Users/sam/Documents/workspace/umbrellium/libs/core.jar"/>
 	<classpathentry kind="lib" path="lib/freenect-0.0.1-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="/home/sam/workspace/eclipse/libs/core.jar"/>
 	<classpathentry kind="output" path="resources/code"/>
 </classpath>

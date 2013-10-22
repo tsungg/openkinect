@@ -44,12 +44,23 @@ import processing.core.PImage;
 public class Kinect {
     public final static String VERSION = "##library.prettyVersion##";
 
+    /**
+     * return the version of the library.
+     * 
+     * @return String
+     */
+    public static String version() {
+        return VERSION;
+    }
+
     private PApplet parent;
     private Method kinectEventMethod;
     private Context context;
     private Device device;
     private DepthFrame depthFrame;
+
     private RGBFrame rgbFrame;
+    private boolean debug;
 
     /**
      * Constructor, sets the PApplet we are running inside as the parent.
@@ -58,7 +69,8 @@ public class Kinect {
      */
     public Kinect(PApplet parent) {
         this.parent = parent;
-        this.depthFrame = new DepthFrame(parent);
+        this.depthFrame = new DepthFrame(parent, this);
+        this.rgbFrame = new RGBFrame(parent, this);
 
         /**
          * try { this.kinectEventMethod = this.parent.getClass().getMethod(
@@ -69,6 +81,52 @@ public class Kinect {
          * "Security exception when trying to load the kinectEvent() method.",
          * e); }
          **/
+    }
+
+    public void debug(String message) {
+        if (this.debug) {
+            System.out.println(message);
+        }
+    }
+
+    public void enableDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    public void enableDepth(boolean b) {
+        this.depthFrame.setProcessImage(b);
+    }
+
+    public void enableRGB(boolean b) {
+        this.rgbFrame.setProcessImage(b);
+    }
+
+    /**
+     * Get the depth image.
+     * 
+     * @return
+     */
+    public PImage getDepthImage() {
+        if (this.depthFrame != null) {
+            return this.depthFrame.getImage();
+        } else {
+            System.err.println("DepthFrame not initialized properly.");
+            return new PImage(640, 480);
+        }
+    }
+
+    /**
+     * Get video image from the kinect - either normal rgb or infrared.
+     * 
+     * @return
+     */
+    public PImage getVideoImage() {
+        if (this.rgbFrame != null) {
+            return this.rgbFrame.getImage();
+        } else {
+            System.err.println("RBGFrame not initialized properly.");
+            return new PImage(640, 480);
+        }
     }
 
     /**
@@ -88,7 +146,7 @@ public class Kinect {
     public void start(int num) {
         this.context = Freenect.createContext();
         if (this.context.numDevices() < 1) {
-            System.out.println("No Kinect devices found.");
+            System.err.println("No Kinect devices found.");
         }
         this.device = this.context.openDevice(num);
 
@@ -96,7 +154,9 @@ public class Kinect {
             @Override
             public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                     int timestamp) {
-                rgbFrame.setData(frame);
+                if (rgbFrame != null) {
+                    rgbFrame.setData(mode, frame, timestamp);
+                }
             }
         });
 
@@ -104,7 +164,9 @@ public class Kinect {
             @Override
             public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                     int timestamp) {
-                depthFrame.setData(frame);
+                if (depthFrame != null) {
+                    depthFrame.setData(mode, frame, timestamp);
+                }
             }
         });
     }
@@ -116,35 +178,5 @@ public class Kinect {
         if (this.context != null) {
             this.context.shutdown();
         }
-    }
-
-    public void enableRGB(boolean b) {
-        this.rgbFrame.setProcessImage(b);
-    }
-
-    public void enableDepth(boolean b) {
-        this.depthFrame.setProcessImage(b);
-    }
-
-    public PImage getVideoImage() {
-        return this.rgbFrame.getImage();
-    }
-
-    /**
-     * Get the depth image.
-     * 
-     * @return
-     */
-    public PImage getDepthImage() {
-        return this.depthFrame.getImage();
-    }
-
-    /**
-     * return the version of the library.
-     * 
-     * @return String
-     */
-    public static String version() {
-        return VERSION;
     }
 }
