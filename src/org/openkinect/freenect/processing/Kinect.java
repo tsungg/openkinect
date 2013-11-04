@@ -26,6 +26,7 @@ package org.openkinect.freenect.processing;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.nio.ShortBuffer;
 
 import org.openkinect.freenect.Context;
 import org.openkinect.freenect.DepthHandler;
@@ -43,6 +44,8 @@ import processing.core.PImage;
  */
 public class Kinect {
     public final static String VERSION = "##library.prettyVersion##";
+    public final static int WIDTH = 640;
+    public final static int HEIGHT = 480;
 
     /**
      * return the version of the library.
@@ -54,13 +57,13 @@ public class Kinect {
     }
 
     private PApplet parent;
-    private Method kinectEventMethod;
     private Context context;
     private Device device;
     private DepthFrame depthFrame;
-
     private RGBFrame rgbFrame;
-    private boolean debug;
+    private boolean debug = true;
+    private int[] depth;
+    private Method kinectEventMethod;
 
     /**
      * Constructor, sets the PApplet we are running inside as the parent.
@@ -68,37 +71,74 @@ public class Kinect {
      * @param parent
      */
     public Kinect(PApplet parent) {
-        this.parent = parent;
+        // this.parent = parent;
         this.depthFrame = new DepthFrame(parent, this);
         this.rgbFrame = new RGBFrame(parent, this);
+        this.depth = new int[WIDTH * HEIGHT];
 
-        /**
-         * try { this.kinectEventMethod = this.parent.getClass().getMethod(
-         * "kinectEvent", new Class[] { Kinect.class }); } catch
-         * (NoSuchMethodException e) { throw new RuntimeException(
-         * "You appear to be missing the kinectEvent() method.", e); } catch
-         * (SecurityException e) { throw new RuntimeException(
-         * "Security exception when trying to load the kinectEvent() method.",
-         * e); }
-         **/
+        debug("Initialized Kinect");
     }
 
-    public void debug(String message) {
+    /**
+     * Debug method for internal use. Prints the passed in message to stdout if
+     * the debug flag is set to true.
+     * 
+     * @param message
+     *            the message to be printed
+     */
+    protected void debug(String message) {
         if (this.debug) {
             System.out.println(message);
         }
     }
 
+    /**
+     * Enable or disable debug mode.
+     * 
+     * @param debug
+     *            set to true if you want to see debug output, false otherwise.
+     *            Defaults to false.
+     */
     public void enableDebug(boolean debug) {
         this.debug = debug;
     }
 
+    /**
+     * Enable or disable the depth handler. This method is deprecated, and kept
+     * for compatibility with the original version of this library.
+     * 
+     * @param b
+     */
+    @Deprecated
     public void enableDepth(boolean b) {
-        this.depthFrame.setProcessImage(b);
+        if (b) {
+            startDepth();
+        } else {
+            stopDepth();
+        }
     }
 
+    /**
+     * Enable or disable the RGB video handler.
+     * 
+     * @param b
+     */
+    @Deprecated
     public void enableRGB(boolean b) {
-        this.rgbFrame.setProcessImage(b);
+        if (b) {
+            startVideo();
+        } else {
+            stopVideo();
+        }
+    }
+
+    /**
+     * Return the FPS of the depth handler.
+     * 
+     * @return the fps
+     */
+    public float getDepthFPS() {
+        return this.depthFrame.fps;
     }
 
     /**
@@ -107,12 +147,38 @@ public class Kinect {
      * @return
      */
     public PImage getDepthImage() {
-        if (this.depthFrame != null) {
-            return this.depthFrame.getImage();
+        return this.depthFrame.getImage();
+    }
+
+    /**
+     * Return the raw depth information from the sensor.
+     * 
+     * @return
+     */
+    public int[] getRawDepth() {
+        ShortBuffer sb = this.depthFrame.getRawData();
+
+        if (sb != null) {
+            for (int i = 0; i < depth.length; i++) {
+                depth[i] = sb.get(i);
+            }
         } else {
-            System.err.println("DepthFrame not initialized properly.");
-            return new PImage(640, 480);
+            // build array full of 0s rather than returning null.
+            for (int i = 0; i < depth.length; i++) {
+                depth[i] = 0;
+            }
         }
+
+        return depth;
+    }
+
+    /**
+     * Return the FPS of the video handler.
+     * 
+     * @return the fps
+     */
+    public float getVideoFPS() {
+        return this.rgbFrame.fps;
     }
 
     /**
@@ -121,12 +187,21 @@ public class Kinect {
      * @return
      */
     public PImage getVideoImage() {
-        if (this.rgbFrame != null) {
-            return this.rgbFrame.getImage();
-        } else {
-            System.err.println("RBGFrame not initialized properly.");
-            return new PImage(640, 480);
-        }
+        return this.rgbFrame.getImage();
+    }
+
+    /**
+     * Enable or disable processing of the depth information. Set this to false
+     * if you don't need to render the grayscale depth image, i.e. if you want
+     * to use the depth information to render 3d points.
+     * 
+     * @param processImage
+     *            set to true if you want the library to process the image,
+     *            false otherwise.
+     */
+    public void processDepthImage(boolean processImage) {
+        debug("Setting depth processImage to: " + processImage);
+        this.depthFrame.processImage = processImage;
     }
 
     /**
@@ -144,39 +219,95 @@ public class Kinect {
      * @param num
      */
     public void start(int num) {
+        debug("Starting Kinect");
         this.context = Freenect.createContext();
         if (this.context.numDevices() < 1) {
             System.err.println("No Kinect devices found.");
         }
+
         this.device = this.context.openDevice(num);
 
-        this.device.startVideo(new VideoHandler() {
-            @Override
-            public void onFrameReceived(FrameMode mode, ByteBuffer frame,
-                    int timestamp) {
-                if (rgbFrame != null) {
-                    rgbFrame.setData(mode, frame, timestamp);
-                }
-            }
-        });
+    }
 
-        this.device.startDepth(new DepthHandler() {
-            @Override
-            public void onFrameReceived(FrameMode mode, ByteBuffer frame,
-                    int timestamp) {
-                if (depthFrame != null) {
-                    depthFrame.setData(mode, frame, timestamp);
+    /**
+     * Start the depth handler running.
+     * 
+     * @see DepthFrame#setData(FrameMode, ByteBuffer, int)
+     */
+    public void startDepth() {
+        debug("Starting depth handler");
+        if (this.device != null) {
+            this.device.startDepth(new DepthHandler() {
+                @Override
+                public void onFrameReceived(FrameMode mode, ByteBuffer frame,
+                        int timestamp) {
+                    if (depthFrame != null) {
+                        depthFrame.setData(mode, frame, timestamp);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            System.err
+                    .println("ERROR: startDepth called before Kinect was started.");
+        }
+    }
+
+    /**
+     * Start the video handler.
+     * 
+     * @see RGBFrame#setData(FrameMode, ByteBuffer, int)
+     */
+    public void startVideo() {
+        debug("Starting video handler");
+        if (this.device != null) {
+            this.device.startVideo(new VideoHandler() {
+                @Override
+                public void onFrameReceived(FrameMode mode, ByteBuffer frame,
+                        int timestamp) {
+                    if (rgbFrame != null) {
+                        rgbFrame.setData(mode, frame, timestamp);
+                    }
+                }
+            });
+        } else {
+            System.err
+                    .println("ERROR: startVideo called before Kinect was started.");
+        }
     }
 
     /**
      * Stop the Kinect.
      */
-    public void stop() {
+    public void shutdown() {
+        debug("Stopping Kinect");
         if (this.context != null) {
             this.context.shutdown();
+        }
+    }
+
+    /**
+     * Stop the depth handler.
+     */
+    public void stopDepth() {
+        debug("Stopping depth handler");
+        if (this.device != null) {
+            this.device.stopDepth();
+        } else {
+            System.err
+                    .println("ERROR: stopDepth called before Kinect was started.");
+        }
+    }
+
+    /**
+     * Stop the video handler.
+     */
+    public void stopVideo() {
+        debug("Stopping video handler");
+        if (this.device != null) {
+            this.device.stopVideo();
+        } else {
+            System.err
+                    .println("ERROR: stopVideo called before Kinect was started.");
         }
     }
 }

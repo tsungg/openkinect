@@ -24,10 +24,10 @@ public abstract class AbstractFrame implements Frame {
     protected Kinect kinect;
 
     public AbstractFrame(PApplet parent, Kinect kinect) {
-        System.out.println("Created AbstractFrame");
         this.parent = parent;
         this.kinect = kinect;
-        this.image = parent.createImage(640, 480, PConstants.RGB);
+        this.image = parent.createImage(Kinect.WIDTH, Kinect.HEIGHT,
+                PConstants.RGB);
         this.currentTime = System.currentTimeMillis();
     }
 
@@ -48,10 +48,19 @@ public abstract class AbstractFrame implements Frame {
         this.processImage = processImage;
     }
 
+    /**
+     * Return the raw ShortBuffer data currently stored in the class.
+     * 
+     * @return
+     */
     public ShortBuffer getRawData() {
         return this.sdata;
     }
 
+    /**
+     * Calculate our internal current frame rate. If debug is true on the Kinect
+     * instance this value is printed to stdout.
+     */
     protected void calculateFps() {
         long now = System.currentTimeMillis();
         long elapsedTime = now - this.currentTime;
@@ -60,5 +69,4 @@ public abstract class AbstractFrame implements Frame {
         kinect.debug(this.getClass().getSimpleName() + " FPS: " + this.fps);
         this.currentTime = now;
     }
-
 }

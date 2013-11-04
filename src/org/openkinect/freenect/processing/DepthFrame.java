@@ -15,9 +15,15 @@ import processing.core.PApplet;
  */
 public class DepthFrame extends AbstractFrame {
 
+    /**
+     * Constructor.
+     * 
+     * @param parent
+     * @param kinect
+     */
     public DepthFrame(PApplet parent, Kinect kinect) {
         super(parent, kinect);
-        this.kinect.debug("Created DepthFrame");
+        this.kinect.debug("Initialized DepthFrame");
     }
 
     @Override
