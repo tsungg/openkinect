@@ -24,7 +24,6 @@
 
 package org.openkinect.freenect.processing;
 
-import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
 
@@ -42,7 +41,7 @@ import processing.core.PImage;
  * @author sam
  * 
  */
-public class Kinect {
+public class Kinect extends Thread {
     public final static String VERSION = "##library.prettyVersion##";
     public final static int WIDTH = 640;
     public final static int HEIGHT = 480;
@@ -56,25 +55,30 @@ public class Kinect {
         return VERSION;
     }
 
-    private PApplet parent;
+    private boolean running;
+    private int wait;
     private Context context;
     private Device device;
     private DepthFrame depthFrame;
     private RGBFrame rgbFrame;
     private boolean debug = true;
     private int[] depth;
-    private Method kinectEventMethod;
+    private long count;
 
     /**
      * Constructor, sets the PApplet we are running inside as the parent.
      * 
      * @param parent
      */
-    public Kinect(PApplet parent) {
+    public Kinect(PApplet parent, String id, int wait) {
+        super(id);
         // this.parent = parent;
         this.depthFrame = new DepthFrame(parent, this);
         this.rgbFrame = new RGBFrame(parent, this);
         this.depth = new int[WIDTH * HEIGHT];
+        this.running = false;
+        this.wait = wait;
+        this.count = 0;
 
         debug("Initialized Kinect");
     }
@@ -207,26 +211,37 @@ public class Kinect {
     /**
      * Start the kinect.
      */
+    @Override
     public void start() {
-        this.start(0);
-    }
+        debug("Starting Kinect thread: " + Thread.currentThread().getName()
+                + ". Will execute every: " + this.wait + " ms");
 
-    /**
-     * Start the kinect setting some num parameter.
-     * 
-     * TODO: figure out what num does in this context.
-     * 
-     * @param num
-     */
-    public void start(int num) {
-        debug("Starting Kinect");
+        this.running = true;
         this.context = Freenect.createContext();
         if (this.context.numDevices() < 1) {
             System.err.println("No Kinect devices found.");
         }
 
-        this.device = this.context.openDevice(num);
+        this.device = this.context.openDevice(0);
+        super.start();
+    }
 
+    /**
+     * 
+     */
+    @Override
+    public void run() {
+        while (running) {
+            debug("Running Kinect thread logic in thread: "
+                    + Thread.currentThread().getName());
+            try {
+                debug("Waiting for: " + wait + " ms");
+                sleep((long) wait);
+            } catch (InterruptedException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -241,6 +256,8 @@ public class Kinect {
                 @Override
                 public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                         int timestamp) {
+                    debug("Depth Handler Thread: "
+                            + Thread.currentThread().getName());
                     if (depthFrame != null) {
                         depthFrame.setData(mode, frame, timestamp);
                     }
@@ -264,6 +281,8 @@ public class Kinect {
                 @Override
                 public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                         int timestamp) {
+                    debug("Video Handler Thread: "
+                            + Thread.currentThread().getName());
                     if (rgbFrame != null) {
                         rgbFrame.setData(mode, frame, timestamp);
                     }
