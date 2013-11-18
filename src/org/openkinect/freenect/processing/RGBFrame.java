@@ -13,7 +13,7 @@ import processing.core.PApplet;
  * @author sam
  * 
  */
-public class RGBFrame extends AbstractFrame {
+public class RGBFrame extends BaseFrame {
 
     private boolean infrared = false;
 
@@ -32,7 +32,8 @@ public class RGBFrame extends AbstractFrame {
     }
 
     @Override
-    public void setData(FrameMode mode, ByteBuffer frame, int timestamp) {
+    public synchronized void setData(FrameMode mode, ByteBuffer frame,
+            int timestamp) {
 
         if (infrared) {
             this.sdata = frame.asShortBuffer();

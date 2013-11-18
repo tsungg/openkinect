@@ -16,9 +16,11 @@ import processing.core.PImage;
 public interface Frame {
     /**
      * 
-     * @param mode TODO
+     * @param mode
+     *            TODO
      * @param frame
-     * @param timestamp TODO
+     * @param timestamp
+     *            TODO
      */
     public void setData(FrameMode mode, ByteBuffer frame, int timestamp);
 

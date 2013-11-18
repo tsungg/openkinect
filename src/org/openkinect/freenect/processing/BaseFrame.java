@@ -13,7 +13,7 @@ import processing.core.PImage;
  * @author sam
  * 
  */
-public abstract class AbstractFrame implements Frame {
+public abstract class BaseFrame implements Frame {
 
     protected boolean processImage = false;
     protected PApplet parent;
@@ -22,19 +22,22 @@ public abstract class AbstractFrame implements Frame {
     protected float fps;
     protected long currentTime;
     protected Kinect kinect;
+    protected long imageReadTime;
 
-    public AbstractFrame(PApplet parent, Kinect kinect) {
+    public BaseFrame(PApplet parent, Kinect kinect) {
         this.parent = parent;
         this.kinect = kinect;
         this.image = parent.createImage(Kinect.WIDTH, Kinect.HEIGHT,
                 PConstants.RGB);
         this.currentTime = System.currentTimeMillis();
+        this.imageReadTime = System.currentTimeMillis();
     }
 
     /**
      * @return
      */
     public PImage getImage() {
+        debugDataRead();
         return image;
     }
 
@@ -54,6 +57,7 @@ public abstract class AbstractFrame implements Frame {
      * @return
      */
     public ShortBuffer getRawData() {
+        debugDataRead();
         return this.sdata;
     }
 
@@ -68,5 +72,12 @@ public abstract class AbstractFrame implements Frame {
         this.fps = PApplet.lerp(this.fps, currentFps, 0.1f);
         kinect.debug(this.getClass().getSimpleName() + " FPS: " + this.fps);
         this.currentTime = now;
+    }
+
+    private void debugDataRead() {
+        long now = System.currentTimeMillis();
+        this.kinect.debug("Reading image data after wait of: "
+                + (now - this.imageReadTime) + " ms.");
+        this.imageReadTime = now;
     }
 }

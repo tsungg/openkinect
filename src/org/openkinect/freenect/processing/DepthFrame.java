@@ -13,7 +13,7 @@ import processing.core.PApplet;
  * @author sam
  * 
  */
-public class DepthFrame extends AbstractFrame {
+public class DepthFrame extends BaseFrame {
 
     /**
      * Constructor.
@@ -27,10 +27,11 @@ public class DepthFrame extends AbstractFrame {
     }
 
     @Override
-    public void setData(FrameMode mode, ByteBuffer frame, int timestamp) {
-        if (processImage) {
-            this.sdata = frame.asShortBuffer();
+    public synchronized void setData(FrameMode mode, ByteBuffer frame,
+            int timestamp) {
+        this.sdata = frame.asShortBuffer();
 
+        if (processImage) {
             for (int y = 0; y < this.image.height; y++) {
                 for (int x = 0; x < this.image.width; x++) {
                     int offset = x + y * this.image.width;

@@ -41,7 +41,7 @@ import processing.core.PImage;
  * @author sam
  * 
  */
-public class Kinect extends Thread {
+public class Kinect {
     public final static String VERSION = "##library.prettyVersion##";
     public final static int WIDTH = 640;
     public final static int HEIGHT = 480;
@@ -55,32 +55,25 @@ public class Kinect extends Thread {
         return VERSION;
     }
 
-    private boolean running;
-    private int wait;
     private Context context;
     private Device device;
     private DepthFrame depthFrame;
     private RGBFrame rgbFrame;
     private boolean debug = true;
     private int[] depth;
-    private long count;
 
     /**
      * Constructor, sets the PApplet we are running inside as the parent.
      * 
      * @param parent
      */
-    public Kinect(PApplet parent, String id, int wait) {
-        super(id);
+    public Kinect(PApplet parent) {
         // this.parent = parent;
         this.depthFrame = new DepthFrame(parent, this);
         this.rgbFrame = new RGBFrame(parent, this);
         this.depth = new int[WIDTH * HEIGHT];
-        this.running = false;
-        this.wait = wait;
-        this.count = 0;
 
-        debug("Initialized Kinect");
+        debug("Initialized Kinect: " + Thread.currentThread().getName());
     }
 
     /**
@@ -163,8 +156,8 @@ public class Kinect extends Thread {
         ShortBuffer sb = this.depthFrame.getRawData();
 
         if (sb != null) {
-            for (int i = 0; i < depth.length; i++) {
-                depth[i] = sb.get(i);
+            for (int i = 0; i < this.depth.length; i++) {
+                this.depth[i] = sb.get(i);
             }
         } else {
             // build array full of 0s rather than returning null.
@@ -208,40 +201,23 @@ public class Kinect extends Thread {
         this.depthFrame.processImage = processImage;
     }
 
+    public void enableInfraredMode(boolean infraredMode) {
+        debug("Setting infrared mode to :" + infraredMode);
+        this.rgbFrame.setInfrared(infraredMode);
+    }
+
     /**
      * Start the kinect.
      */
-    @Override
     public void start() {
-        debug("Starting Kinect thread: " + Thread.currentThread().getName()
-                + ". Will execute every: " + this.wait + " ms");
+        debug("Starting Kinect thread: " + Thread.currentThread().getName());
 
-        this.running = true;
         this.context = Freenect.createContext();
         if (this.context.numDevices() < 1) {
             System.err.println("No Kinect devices found.");
         }
 
         this.device = this.context.openDevice(0);
-        super.start();
-    }
-
-    /**
-     * 
-     */
-    @Override
-    public void run() {
-        while (running) {
-            debug("Running Kinect thread logic in thread: "
-                    + Thread.currentThread().getName());
-            try {
-                debug("Waiting for: " + wait + " ms");
-                sleep((long) wait);
-            } catch (InterruptedException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-        }
     }
 
     /**
@@ -253,14 +229,11 @@ public class Kinect extends Thread {
         debug("Starting depth handler");
         if (this.device != null) {
             this.device.startDepth(new DepthHandler() {
+
                 @Override
                 public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                         int timestamp) {
-                    debug("Depth Handler Thread: "
-                            + Thread.currentThread().getName());
-                    if (depthFrame != null) {
-                        depthFrame.setData(mode, frame, timestamp);
-                    }
+                    depthFrame.setData(mode, frame, timestamp);
                 }
             });
         } else {
@@ -281,11 +254,7 @@ public class Kinect extends Thread {
                 @Override
                 public void onFrameReceived(FrameMode mode, ByteBuffer frame,
                         int timestamp) {
-                    debug("Video Handler Thread: "
-                            + Thread.currentThread().getName());
-                    if (rgbFrame != null) {
-                        rgbFrame.setData(mode, frame, timestamp);
-                    }
+                    rgbFrame.setData(mode, frame, timestamp);
                 }
             });
         } else {
@@ -299,6 +268,7 @@ public class Kinect extends Thread {
      */
     public void shutdown() {
         debug("Stopping Kinect");
+
         if (this.context != null) {
             this.context.shutdown();
         }
